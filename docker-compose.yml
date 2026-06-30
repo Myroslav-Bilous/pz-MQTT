@@ -1,0 +1,30 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: pz-mqtt-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./broker/data:/mosquitto/data
+      - ./broker/log:/mosquitto/log
+
+  sender:
+    image: nginx:1.27-alpine
+    container_name: pz-mqtt-sender
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ./web/sender:/usr/share/nginx/html:ro
+
+  receiver:
+    image: nginx:1.27-alpine
+    container_name: pz-mqtt-receiver
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    volumes:
+      - ./web/receiver:/usr/share/nginx/html:ro

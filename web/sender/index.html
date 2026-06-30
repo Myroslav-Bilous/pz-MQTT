@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MQTT Sender</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>MQTT Sender</h1>
+      <p id="statusText">Підключення...</p>
+      <label for="topic">Topic:</label>
+      <input id="topic" value="demo">
+      <br><br>
+      <label for="message">Message:</label>
+      <textarea id="message">Hello from browser sender</textarea>
+      <br><br>
+      <button id="sendButton" type="button" disabled>Відправити</button>
+      <pre id="log">Очікування підключення до ws://localhost:9001...</pre>
+    </main>
+
+    <script>
+      const brokerUrl = "ws://localhost:9001";
+      const statusText = document.querySelector("#statusText");
+      const topicInput = document.querySelector("#topic");
+      const messageInput = document.querySelector("#message");
+      const sendButton = document.querySelector("#sendButton");
+      const log = document.querySelector("#log");
+
+      function writeLog(text) {
+        const time = new Date().toLocaleTimeString();
+        log.textContent += `\n[${time}] ${text}`;
+      }
+
+      const client = mqtt.connect(brokerUrl, {
+        clientId: `web-sender-${Math.random().toString(16).slice(2)}`,
+        clean: true,
+        reconnectPeriod: 2000
+      });
+
+      client.on("connect", () => {
+        statusText.textContent = "Підключено до ws://localhost:9001";
+        sendButton.disabled = false;
+        writeLog("Connected");
+      });
+
+      client.on("reconnect", () => {
+        statusText.textContent = "Повторне підключення...";
+        sendButton.disabled = true;
+      });
+
+      client.on("close", () => {
+        statusText.textContent = "Відключено";
+        sendButton.disabled = true;
+      });
+
+      client.on("error", (error) => {
+        writeLog(`Error: ${error.message}`);
+      });
+
+      sendButton.addEventListener("click", () => {
+        const topic = topicInput.value.trim();
+        const message = messageInput.value;
+
+        if (!topic) {
+          writeLog("Topic is empty");
+          return;
+        }
+
+        client.publish(topic, message, { qos: 0 }, (error) => {
+          if (error) {
+            writeLog(`Publish error: ${error.message}`);
+            return;
+          }
+
+          writeLog(`Published to ${topic}: ${message}`);
+        });
+      });
+    </script>
+  </body>
+</html>

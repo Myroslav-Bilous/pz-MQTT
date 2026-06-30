@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MQTT Receiver</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>MQTT Receiver</h1>
+      <p id="statusText">Підключення...</p>
+      <label for="topic">Topic:</label>
+      <input id="topic" value="demo">
+      <br><br>
+      <button id="subscribeButton" type="button" disabled>Підписатися</button>
+      <button id="clearButton" type="button">Очистити лог</button>
+      <pre id="log">Очікування підключення до ws://localhost:9001...</pre>
+    </main>
+
+    <script>
+      const brokerUrl = "ws://localhost:9001";
+      const statusText = document.querySelector("#statusText");
+      const topicInput = document.querySelector("#topic");
+      const subscribeButton = document.querySelector("#subscribeButton");
+      const clearButton = document.querySelector("#clearButton");
+      const log = document.querySelector("#log");
+      let subscribedTopic = "";
+
+      function writeLog(text) {
+        const time = new Date().toLocaleTimeString();
+        log.textContent += `\n[${time}] ${text}`;
+        log.scrollTop = log.scrollHeight;
+      }
+
+      const client = mqtt.connect(brokerUrl, {
+        clientId: `web-receiver-${Math.random().toString(16).slice(2)}`,
+        clean: true,
+        reconnectPeriod: 2000
+      });
+
+      client.on("connect", () => {
+        statusText.textContent = "Підключено до ws://localhost:9001";
+        subscribeButton.disabled = false;
+        writeLog("Connected");
+      });
+
+      client.on("reconnect", () => {
+        statusText.textContent = "Повторне підключення...";
+        subscribeButton.disabled = true;
+      });
+
+      client.on("close", () => {
+        statusText.textContent = "Відключено";
+        subscribeButton.disabled = true;
+      });
+
+      client.on("error", (error) => {
+        writeLog(`Error: ${error.message}`);
+      });
+
+      client.on("message", (topic, payload) => {
+        writeLog(`${topic}: ${payload.toString()}`);
+      });
+
+      subscribeButton.addEventListener("click", () => {
+        const topic = topicInput.value.trim();
+
+        if (!topic) {
+          writeLog("Topic is empty");
+          return;
+        }
+
+        if (subscribedTopic) {
+          client.unsubscribe(subscribedTopic);
+        }
+
+        client.subscribe(topic, { qos: 0 }, (error) => {
+          if (error) {
+            writeLog(`Subscribe error: ${error.message}`);
+            return;
+          }
+
+          subscribedTopic = topic;
+          writeLog(`Subscribed to ${topic}`);
+        });
+      });
+
+      clearButton.addEventListener("click", () => {
+        log.textContent = "";
+      });
+    </script>
+  </body>
+</html>
